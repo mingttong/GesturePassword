@@ -42,6 +42,9 @@ var GesturePassword = function () {
 
     var ctx = canvas.getContext('2d'),
         that = this,
+        // 记录起始位置
+        startX,
+        startY,
         codeList = [], // 行径列表
         ballList = [], // 小球列表
         imgData = null // 缓存每次图片的数据
@@ -72,22 +75,33 @@ var GesturePassword = function () {
 
     };
 
+    /**
+     * 刷新画布
+     */
+    this.refresh = function () {
+
+        ctx.clearRect(0, 0, _width, _height);
+        ctx.putImageData(imgData, 0, 0);
+
+    };
+
+    /**
+     * 向Canvas添加事件
+     */
     this.addEvent = function () {
 
         $canvas.on('touchstart', function (e) {
 
-            var x = e.originalEvent.targetTouches[0].pageX,
-                y = e.originalEvent.targetTouches[0].pageY
-            ;
-
-            ctx.moveTo(x, y);
+            // 记录起始点
+            //startX = e.originalEvent.targetTouches[0].pageX;
+            //startY = e.originalEvent.targetTouches[0].pageY;
+            //
+            //ctx.beginPath();
+            //ctx.moveTo(startX, startY);
 
         });
 
         $canvas.on('touchmove', function (e) {
-
-            //ctx.clearRect(0, 0, _width, _height);
-            //ctx.putImageData(imgData, 0, 0);
 
             var i,
                 x = e.originalEvent.targetTouches[0].pageX,
@@ -106,9 +120,24 @@ var GesturePassword = function () {
                 // 经过这个点时，并且该点之前没有经过过
                 if (ball.isInBall(x, y) && !ball.passed) {
 
+                    // 先将两点连上线
+                    that.refresh();
+                    ctx.beginPath();
+                    ctx.moveTo(startX, startY);
+                    ctx.lineTo(ball.x, ball.y); // 线画向圆心。
+                    ctx.stroke(); // 画上线
                     ball.drawBall(); // 给小球着色
-                    codeList.push(ball.code); // 数字存储
 
+                    // 缓存下起点坐标，起点坐标就是圆心坐标
+                    startX = ball.x;
+                    startY = ball.y;
+
+                    ctx.beginPath();
+                    ctx.moveTo(startX, startY);
+
+                    codeList.push(ball.code); // 数字存储
+                    ball.passed = true;
+                    imgData = ctx.getImageData(0, 0, _width, _height); // 缓存图像
 
                 }
 
@@ -116,10 +145,16 @@ var GesturePassword = function () {
 
             // 画线事件
 
-            ctx.clearRect(0, 0, _width, _height); // 先清除画板
-            ctx.putImageData(imgData, 0, 0);
+            that.refresh();
+            ctx.beginPath(); // 注意一定要开启新的路径，不然会出现光波辐射
+            ctx.moveTo(startX, startY);
             ctx.lineTo(x, y);
+            ctx.stroke();
 
+        });
+
+        $canvas.on('touchend', function (e) {
+            that.refresh();
         })
 
     };
@@ -194,6 +229,7 @@ var Ball = function (ctx, x, y, radius, code) {
         ctx.fill();
         //ctx.save();
         //ctx.closePath();
+        ctx.beginPath();
 
     };
 
@@ -204,9 +240,13 @@ var Ball = function (ctx, x, y, radius, code) {
      * @returns {boolean}
      */
     this.isInBall = function (targetX, targetY) {
-        ctx.beginPath();
-        ctx.arc(that.x, that.y, that.radius, 0, 360, false);
-        return ctx.isPointInPath(targetX, targetY);
+
+        var result;
+
+        // 如果间距小于等于半径，则在圆内。
+        Math.sqrt(Math.pow(targetX - that.x, 2) + Math.pow(targetY - that.y, 2)) <= that.radius ? result = true : result = false;
+
+        return result;
     };
 
     // 初始化小球
