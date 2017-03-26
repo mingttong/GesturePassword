@@ -6,12 +6,6 @@ window.onload = function () {
 
     /*
      *****以下我们将“圆”成为“小球”，让其更加平易近人。*****
-
-     RADIUS = 15
-     GAP = 88
-     整个宽度/高度：(GAP + RADIUS) * 2
-     MARGIN_LEFT = (WIDTH - (GAP + RADIUS) * 2) / 2
-     MARGIN_TOP = (HEIGHT - (GAP + RADIUS) * 2) / 2
      */
 
     var gesturePassword = new GesturePassword();
@@ -90,17 +84,6 @@ var GesturePassword = function () {
      */
     this.addEvent = function () {
 
-        $canvas.on('touchstart', function (e) {
-
-            // 记录起始点
-            //startX = e.originalEvent.targetTouches[0].pageX;
-            //startY = e.originalEvent.targetTouches[0].pageY;
-            //
-            //ctx.beginPath();
-            //ctx.moveTo(startX, startY);
-
-        });
-
         $canvas.on('touchmove', function (e) {
 
             var i,
@@ -132,6 +115,7 @@ var GesturePassword = function () {
                     startX = ball.x;
                     startY = ball.y;
 
+                    // 重置路径，起点设为圆心
                     ctx.beginPath();
                     ctx.moveTo(startX, startY);
 
@@ -161,27 +145,6 @@ var GesturePassword = function () {
 
     this.initBalls();
     this.addEvent();
-
-
-        // ****************实验用代码******************
-    (function testCode() {
-
-        for (var i = 0; i < 9; i += 1) {
-
-            var x = i % 3;
-            var y = Math.floor(i / 3);
-
-            ctx.beginPath();
-            ctx.arc(_marginLeft + x * _gap, _marginTop + y * _gap, _radius, 0, 360, false);
-            ctx.fillStyle = '#ffffff';
-            ctx.strokeStyle = '#000000';
-            ctx.stroke();
-            ctx.fill();
-            ctx.closePath();
-
-        }
-
-    });
 
 };
 
