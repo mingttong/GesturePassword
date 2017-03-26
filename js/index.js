@@ -4,12 +4,9 @@
 
 window.onload = function () {
 
-
-};
-
-var GesturePassword = function () {
-
     /*
+     *****以下我们将“圆”成为“小球”，让其更加平易近人。*****
+
      RADIUS = 15
      GAP = 88
      整个宽度/高度：(GAP + RADIUS) * 2
@@ -17,43 +14,202 @@ var GesturePassword = function () {
      MARGIN_TOP = (HEIGHT - (GAP + RADIUS) * 2) / 2
      */
 
-    var WIDTH = $(document.body).width();
-    var HEIGHT = Math.round($(document.body).width() * 0.95);
+    var gesturePassword = new GesturePassword();
 
-    var RADIUS = 15,
-        GAP = 88,
-        MARGIN_LEFT = (WIDTH - (GAP + RADIUS) * 2) / 2,
-        MARGIN_TOP = (HEIGHT - (GAP + RADIUS) * 2) / 2,
-        lineColor = '#ffa726',
-        ballColor = '#ffffff'
+};
+
+var GesturePassword = function () {
+
+    var _width = $(document.body).width(),
+        _height = Math.round($(document.body).width() * 0.95);
+
+    var _radius = 15,
+        _gap = 88,
+        _marginLeft = (_width - _gap * 2) / 2,
+        _marginTop = (_height - _gap * 2) / 2
         ;
 
     var canvas = document.querySelector('#canvas');
+    var $canvas = $(canvas); // jquery对象
 
     // 检测浏览器是否支持Canvas
     if (!canvas.getContext) {
         throw new Error('浏览器不支持Canvas');
     }
 
-    canvas.width = WIDTH;
-    canvas.height = HEIGHT;
-    var ctx = canvas.getContext('2d');
+    canvas.width = _width;
+    canvas.height = _height;
 
-    // 初始化圆
+    var ctx = canvas.getContext('2d'),
+        that = this,
+        codeList = [], // 行径列表
+        ballList = [], // 小球列表
+        imgData = null // 缓存每次图片的数据
+        ;
+
+    /**
+     * 初始化小球
+     */
+    this.initBalls = function () {
+
+        var x, y, i,
+            ball = null
+            ;
+
+        for (i = 0; i < 9; i += 1) {
+
+            x = i % 3;
+            y = Math.floor(i / 3);
+
+            ball = new Ball(ctx, _marginLeft + x * _gap, _marginTop + y * _gap, _radius, i + 1);
+
+            ballList.push(ball);
+
+        }
+
+        // 将初始化的图片缓存
+        imgData = ctx.getImageData(0, 0, _width, _height);
+
+    };
+
+    this.addEvent = function () {
+
+        $canvas.on('touchstart', function (e) {
+
+            var x = e.originalEvent.targetTouches[0].pageX,
+                y = e.originalEvent.targetTouches[0].pageY
+            ;
+
+            ctx.moveTo(x, y);
+
+        });
+
+        $canvas.on('touchmove', function (e) {
+
+            //ctx.clearRect(0, 0, _width, _height);
+            //ctx.putImageData(imgData, 0, 0);
+
+            var i,
+                x = e.originalEvent.targetTouches[0].pageX,
+                y = e.originalEvent.targetTouches[0].pageY,
+                ball = null
+                ;
+
+            // 各个圆点向canvas添加委托
+
+            for (i = 0; i < ballList.length; i += 1) {
+
+                ball = ballList[i];
+
+                // 经过小球事件
+
+                // 经过这个点时，并且该点之前没有经过过
+                if (ball.isInBall(x, y) && !ball.passed) {
+
+                    ball.drawBall(); // 给小球着色
+                    codeList.push(ball.code); // 数字存储
 
 
-    function addBall(ctx, x, y, radius) {
-        // 画一个空心圆
+                }
+
+            }
+
+            // 画线事件
+
+            ctx.clearRect(0, 0, _width, _height); // 先清除画板
+            ctx.putImageData(imgData, 0, 0);
+            ctx.lineTo(x, y);
+
+        })
+
+    };
+
+    this.initBalls();
+    this.addEvent();
+
+
+        // ****************实验用代码******************
+    (function testCode() {
+
+        for (var i = 0; i < 9; i += 1) {
+
+            var x = i % 3;
+            var y = Math.floor(i / 3);
+
+            ctx.beginPath();
+            ctx.arc(_marginLeft + x * _gap, _marginTop + y * _gap, _radius, 0, 360, false);
+            ctx.fillStyle = '#ffffff';
+            ctx.strokeStyle = '#000000';
+            ctx.stroke();
+            ctx.fill();
+            ctx.closePath();
+
+        }
+
+    });
+
+};
+
+/**
+ * 小球类
+ * @param ctx 上下文
+ * @param x 横坐标
+ * @param y 纵坐标
+ * @param radius 半径
+ * @param code 代表的数字
+ * @constructor
+ */
+var Ball = function (ctx, x, y, radius, code) {
+
+    // 防止错误调用
+    if (!(this instanceof Ball)) {
+        return new Ball(ctx, x, y, radius, code);
+    }
+
+    var borderColor = '#b3b3b3'; // 小球的边框色
+    var bgColor = '#ffffff'; // 小球的背景色
+    var that = this;
+    this.ctx = ctx;
+    this.x = x;
+    this.y = y;
+    this.radius = radius;
+    this.code = code;
+    this.passed = false;
+
+    /**
+     * 将小球绘制到画板中
+     * @param color
+     */
+    this.drawBall = function (color) {
+
+        color = color ? color : '#ffa726'; // 颜色默认为橙色
+
+        var ctx = this.ctx;
+
         ctx.beginPath();
-
-        // x, y, radius, startAngle, endAngle, anticlockwise
         ctx.arc(x, y, radius, 0, 360, false);
-        ctx.fillStyle = '#ffa726';
-        ctx.strokeStyle = '#b3b3b3';
+        ctx.fillStyle = color;
+        ctx.strokeStyle = borderColor;
         ctx.stroke();
         ctx.fill();
+        //ctx.save();
+        //ctx.closePath();
 
-        ctx.closePath();
-    }
+    };
+
+    /**
+     * 判断路径是否在某个圆弧范围内。
+     * @param targetX
+     * @param targetY
+     * @returns {boolean}
+     */
+    this.isInBall = function (targetX, targetY) {
+        ctx.beginPath();
+        ctx.arc(that.x, that.y, that.radius, 0, 360, false);
+        return ctx.isPointInPath(targetX, targetY);
+    };
+
+    // 初始化小球
+    this.drawBall(bgColor);
 
 };
