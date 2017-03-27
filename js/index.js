@@ -39,13 +39,15 @@ var GesturePassword = function () {
         // 记录起始位置
         startX,
         startY,
-        codeList = [], // 行径列表
+        codeList = [], // 路径列表
         ballList = [], // 小球列表
-        imgData = null // 缓存每次图片的数据
+        imgData = null, // 缓存每次图片的数据
+        lineWidth = 3,
+        lineColor = '#ffa726'
         ;
 
     /**
-     * 初始化小球
+     * 初始化小球（或者应该叫初始化手势密码？）
      */
     this.initBalls = function () {
 
@@ -53,6 +55,14 @@ var GesturePassword = function () {
             ball = null
             ;
 
+        codeList = []; // 清空路径列表
+        ballList = []; // 清空小球列表
+        ctx.clearRect(0, 0, _width, _height); // 清空所有控件
+        // 重置起始位置
+        startX = undefined;
+        startY = undefined;
+
+        // 添加小球
         for (i = 0; i < 9; i += 1) {
 
             x = i % 3;
@@ -103,13 +113,16 @@ var GesturePassword = function () {
                 // 经过这个点时，并且该点之前没有经过过
                 if (ball.isInBall(x, y) && !ball.passed) {
 
-                    // 先将两点连上线
                     that.refresh();
+                    // 先给小球着色
+                    ball.drawBall();
+                    // 再将两小球的圆心连接起来
                     ctx.beginPath();
+                    ctx.lineWidth = lineWidth;
+                    ctx.strokeStyle = lineColor;
                     ctx.moveTo(startX, startY);
                     ctx.lineTo(ball.x, ball.y); // 线画向圆心。
                     ctx.stroke(); // 画上线
-                    ball.drawBall(); // 给小球着色
 
                     // 缓存下起点坐标，起点坐标就是圆心坐标
                     startX = ball.x;
@@ -127,10 +140,11 @@ var GesturePassword = function () {
 
             }
 
-            // 画线事件
-
+            // 移动画线事件
             that.refresh();
             ctx.beginPath(); // 注意一定要开启新的路径，不然会出现光波辐射
+            ctx.lineWidth = lineWidth;
+            ctx.strokeStyle = lineColor;
             ctx.moveTo(startX, startY);
             ctx.lineTo(x, y);
             ctx.stroke();
@@ -138,7 +152,16 @@ var GesturePassword = function () {
         });
 
         $canvas.on('touchend', function (e) {
-            that.refresh();
+
+            // 如果并没有碰到任何小球，则不做任何判断
+            if (codeList.length === 0) {
+                return;
+            }
+
+            //that.refresh();
+            console.log(codeList.join(' '));
+            that.initBalls();
+
         })
 
     };
@@ -178,15 +201,16 @@ var Ball = function (ctx, x, y, radius, code) {
      * 将小球绘制到画板中
      * @param color
      */
-    this.drawBall = function (color) {
+    this.drawBall = function (bgColor, borderColor) {
 
-        color = color ? color : '#ffa726'; // 颜色默认为橙色
+        bgColor = bgColor ? bgColor : '#ffa726'; // 颜色默认为橙色
+        borderColor = borderColor ? borderColor : '#fd8e01'; // 默认边框颜色
 
         var ctx = this.ctx;
 
         ctx.beginPath();
         ctx.arc(x, y, radius, 0, 360, false);
-        ctx.fillStyle = color;
+        ctx.fillStyle = bgColor;
         ctx.strokeStyle = borderColor;
         ctx.stroke();
         ctx.fill();
@@ -212,7 +236,7 @@ var Ball = function (ctx, x, y, radius, code) {
         return result;
     };
 
-    // 初始化小球
-    this.drawBall(bgColor);
+    // 初始化小球，颜色为背景颜色（白色），边框颜色灰色
+    this.drawBall(bgColor, borderColor);
 
 };
