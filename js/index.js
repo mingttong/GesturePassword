@@ -230,6 +230,8 @@ var GesturePassword = function () {
                 return;
             }
 
+            that.refresh();
+
             var password = codeList.join('');
 
             setTimeout(that.initBalls, 300);
