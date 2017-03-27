@@ -3,7 +3,7 @@ body {
     font-family: "Helvetica Neue",Helvetica,Arial,Verdana,sans-serif;
 }
 
-.tips {
+#tips {
     width: 100%;
     text-align: center;
     font-weight: 700;

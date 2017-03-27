@@ -10,6 +10,25 @@ window.onload = function () {
 
     var gesturePassword = new GesturePassword();
 
+    var $setBtn = $('#setPwd'),
+        $verifyBtn = $('#verifyPwd');
+
+    $setBtn.on('click', function () {
+        // 设置密码
+
+        gesturePassword.setTips('请输入手势密码');
+        gesturePassword.setPwd(); // 切换到设置密码
+
+    });
+
+    $verifyBtn.on('click', function () {
+        // 验证密码
+
+        gesturePassword.setTips('请输入您的密码');
+        gesturePassword.verifyPwd(); // 切换到验证密码
+
+    })
+
 };
 
 var GesturePassword = function () {
@@ -43,8 +62,30 @@ var GesturePassword = function () {
         ballList = [], // 小球列表
         imgData = null, // 缓存每次图片的数据
         lineWidth = 3,
-        lineColor = '#ffa726'
+        lineColor = '#ffa726',
+        pwd, // 密码
+        pwdCache, // 密码缓存，用于验证密码时
+        isVerifyPwd = false, // 是否要验证密码
+        hasPwd = false // 是否有密码了
         ;
+
+    /**
+     * 验证密码
+     */
+    this.verifyPwd = function () {
+        isVerifyPwd = true;
+    };
+
+    /**
+     * 设置密码
+     */
+    this.setPwd = function () {
+        isVerifyPwd = false;
+        // 删除密码
+        if (!delete localStorage.pwd) {
+            localStorage.pwd = '';
+        }
+    };
 
     /**
      * 初始化小球（或者应该叫初始化手势密码？）
@@ -90,55 +131,86 @@ var GesturePassword = function () {
     };
 
     /**
+     * 检测是否按在了小球上面
+     */
+    this.isTouchOnBall = function (x, y) {
+
+        var ball = null,
+            i;
+
+        for (i = 0; i < ballList.length; i += 1) {
+
+            ball = ballList[i];
+
+            // 经过小球事件
+
+            // 各个圆点向canvas添加委托
+
+            // 经过这个点时，并且该点之前没有经过过
+            if (ball.isInBall(x, y) && !ball.passed) {
+
+                that.refresh();
+                // 先给小球着色
+                ball.drawBall();
+                // 再将两小球的圆心连接起来
+                ctx.beginPath();
+                ctx.lineWidth = lineWidth;
+                ctx.strokeStyle = lineColor;
+                ctx.moveTo(startX, startY);
+                ctx.lineTo(ball.x, ball.y); // 线画向圆心。
+                ctx.stroke(); // 画上线
+
+                // 缓存下起点坐标，起点坐标就是圆心坐标
+                startX = ball.x;
+                startY = ball.y;
+
+                // 重置路径，起点设为圆心
+                ctx.beginPath();
+                ctx.moveTo(startX, startY);
+
+                codeList.push(ball.code); // 数字存储
+                ball.passed = true;
+                imgData = ctx.getImageData(0, 0, _width, _height); // 缓存图像
+
+            }
+
+        }
+
+    };
+
+    /**
+     * 设置提示
+     * @param text
+     */
+    this.setTips = function (text) {
+
+        $('#tips span').text(text);
+
+    };
+
+    /**
      * 向Canvas添加事件
      */
     this.addEvent = function () {
 
+        $canvas.on('touchstart', function (e) {
+
+            var x = e.pageX || e.originalEvent.targetTouches[0].pageX,
+                y = e.pageY || e.originalEvent.targetTouches[0].pageY
+            ;
+
+            that.isTouchOnBall(x, y);
+
+        });
+
         $canvas.on('touchmove', function (e) {
 
-            var i,
-                x = e.originalEvent.targetTouches[0].pageX,
-                y = e.originalEvent.targetTouches[0].pageY,
-                ball = null
+            var x = e.originalEvent.targetTouches[0].pageX,
+                y = e.originalEvent.targetTouches[0].pageY
                 ;
 
-            // 各个圆点向canvas添加委托
-
-            for (i = 0; i < ballList.length; i += 1) {
-
-                ball = ballList[i];
-
-                // 经过小球事件
-
-                // 经过这个点时，并且该点之前没有经过过
-                if (ball.isInBall(x, y) && !ball.passed) {
-
-                    that.refresh();
-                    // 先给小球着色
-                    ball.drawBall();
-                    // 再将两小球的圆心连接起来
-                    ctx.beginPath();
-                    ctx.lineWidth = lineWidth;
-                    ctx.strokeStyle = lineColor;
-                    ctx.moveTo(startX, startY);
-                    ctx.lineTo(ball.x, ball.y); // 线画向圆心。
-                    ctx.stroke(); // 画上线
-
-                    // 缓存下起点坐标，起点坐标就是圆心坐标
-                    startX = ball.x;
-                    startY = ball.y;
-
-                    // 重置路径，起点设为圆心
-                    ctx.beginPath();
-                    ctx.moveTo(startX, startY);
-
-                    codeList.push(ball.code); // 数字存储
-                    ball.passed = true;
-                    imgData = ctx.getImageData(0, 0, _width, _height); // 缓存图像
-
-                }
-
-            }
+            // 检测手指是否经过小球
+            that.isTouchOnBall(x, y);
 
             // 移动画线事件
             that.refresh();
@@ -158,9 +230,69 @@ var GesturePassword = function () {
                 return;
             }
 
-            //that.refresh();
-            console.log(codeList.join(' '));
-            that.initBalls();
+            var password = codeList.join('');
+
+            setTimeout(that.initBalls, 300);
+
+            // 设置密码
+            if (!isVerifyPwd) {
+
+                // 如果没有密码缓存
+                if (!pwdCache) {
+
+                    hasPwd = false;
+
+                    // 检查密码长度
+                    if (password.length < 4) {
+
+                        // 提示密码长度太短
+                        that.setTips('密码太短，至少需要4个点');
+
+
+                    } else {
+
+                        // 缓存密码，并且让其再次输入密码
+                        pwdCache = password;
+
+                        that.setTips('请再次输入手势密码');
+                    }
+
+                } else {
+                    // 验证两次输入是否相同
+
+                    if (pwdCache === password) {
+                        // 设置密码
+
+                        that.setTips('密码设置成功');
+
+                        localStorage.pwd = password;
+                        hasPwd = true;
+
+                    } else {
+                        // 两次密码不同
+
+                        that.setTips('两次输入的不一致');
+
+                    }
+
+                    pwdCache = undefined; // 清除缓存密码
+                }
+
+            // 验证密码
+            } else {
+
+                if (!localStorage.pwd) {
+                    that.setTips('您还没有设置密码！');
+                    return;
+                }
+
+                if (localStorage.pwd && password === localStorage.pwd) {
+                    that.setTips('密码正确！');
+                } else {
+                    that.setTips('输入的密码不正确');
+                }
+
+            }
 
         })
 
@@ -199,7 +331,8 @@ var Ball = function (ctx, x, y, radius, code) {
 
     /**
      * 将小球绘制到画板中
-     * @param color
+     * @param bgColor
+     * @param borderColor
      */
     this.drawBall = function (bgColor, borderColor) {
 
@@ -210,12 +343,11 @@ var Ball = function (ctx, x, y, radius, code) {
 
         ctx.beginPath();
         ctx.arc(x, y, radius, 0, 360, false);
+        ctx.lineWidth = 1;
         ctx.fillStyle = bgColor;
         ctx.strokeStyle = borderColor;
         ctx.stroke();
         ctx.fill();
-        //ctx.save();
-        //ctx.closePath();
         ctx.beginPath();
 
     };
