@@ -2,6 +2,11 @@
  * Created by lenovo on 2017/3/26.
  */
 
+/**
+ * 解决飞跃太空山问题：
+ * 在滑到另一个点的判断里，增加一个判断，当前路径是否经过某点
+ */
+
 window.onload = function () {
 
     /*
@@ -27,7 +32,7 @@ window.onload = function () {
         gesturePassword.setTips('请输入您的密码');
         gesturePassword.verifyPwd(); // 切换到验证密码
 
-    })
+    });
 
 };
 
@@ -70,9 +75,17 @@ var GesturePassword = function () {
         ;
 
     /**
+     * 清空缓存
+     */
+    this.clearCache = function () {
+        pwdCache = undefined;
+    };
+
+    /**
      * 验证密码
      */
     this.verifyPwd = function () {
+        that.clearCache(); // 清空缓存
         isVerifyPwd = true;
     };
 
@@ -130,10 +143,64 @@ var GesturePassword = function () {
 
     };
 
+
     /**
-     * 检测是否按在了小球上面
+     * 判断目标点是否在两点的线段上，不包括两个端点本身
+     * @param targetX 目标点
+     * @param targetY 目标点
+     * @param x1 第一个点
+     * @param y1 第一个点
+     * @param x2 第二个点
+     * @param y2 第二个点
+     * @returns {boolean}
      */
-    this.isTouchOnBall = function (x, y) {
+    this.isPointOnLine = function (targetX, targetY, x1, y1, x2, y2) {
+                // 三点在一条直线上
+        return (targetX - x1) * (y2 - y1) === (targetY - y1) * (x2 - x1)
+                // 目标点不超出x的范围
+            && targetX >= Math.min(x1, x2) && targetX <= Math.max(x1, x2)
+                // 目标点不超出y的范围
+            && targetY >= Math.min(y1, y2) && targetY <= Math.max(y1, y2)
+                // 不包括两个端点
+            && !(targetX == x1 && targetY == y1 || targetX == x2 && targetY == y2) ;
+
+    };
+
+    /**
+     * 线经过小球事件
+     * @param x1 第一个点X轴坐标
+     * @param y1 第一个点Y轴坐标
+     * @param x2 第二个点X轴坐标
+     * @param y2 第二个点Y轴坐标
+     */
+    this.lineOnBall = function (x1, y1, x2, y2) {
+
+        var ball = null,
+            i;
+
+        for (i = 0; i < ballList.length; i += 1) {
+
+            ball = ballList[i];
+
+            // 如果这条线经过某个圆的圆心
+            if (that.isPointOnLine(ball.x, ball.y, x1, y1, x2, y2)) {
+
+                ball.drawBall();
+                ball.passed = true;
+                codeList.push(ball.code);
+
+            }
+
+        }
+
+    };
+
+    /**
+     * 手指经过小球
+     * @param x 手指的X轴坐标
+     * @param y 手指的Y轴坐标
+     */
+    this.touchOnBall = function (x, y) {
 
         var ball = null,
             i;
@@ -148,7 +215,6 @@ var GesturePassword = function () {
 
             // 经过这个点时，并且该点之前没有经过过
             if (ball.isInBall(x, y) && !ball.passed) {
-
                 that.refresh();
                 // 先给小球着色
                 ball.drawBall();
@@ -160,6 +226,10 @@ var GesturePassword = function () {
                 ctx.lineTo(ball.x, ball.y); // 线画向圆心。
                 ctx.stroke(); // 画上线
 
+                // 再判断下中间是否经过某点
+                // 应该先判断，不然存储密码的顺序会乱
+                that.lineOnBall(startX, startY, ball.x, ball.y);
+
                 // 缓存下起点坐标，起点坐标就是圆心坐标
                 startX = ball.x;
                 startY = ball.y;
@@ -168,8 +238,9 @@ var GesturePassword = function () {
                 ctx.beginPath();
                 ctx.moveTo(startX, startY);
 
-                codeList.push(ball.code); // 数字存储
                 ball.passed = true;
+                // 如果线横穿某点，则应该先记录被横穿的点，再记录本点
+                codeList.push(ball.code); // 数字存储
                 imgData = ctx.getImageData(0, 0, _width, _height); // 缓存图像
 
             }
@@ -201,7 +272,8 @@ var GesturePassword = function () {
                 y = e.pageY || e.originalEvent.targetTouches[0].pageY
             ;
 
-            that.isTouchOnBall(x, y);
+            // 手指按在小球时
+            that.touchOnBall(x, y);
 
         });
 
@@ -213,8 +285,8 @@ var GesturePassword = function () {
                 y = e.originalEvent.targetTouches[0].pageY
                 ;
 
-            // 检测手指是否经过小球
-            that.isTouchOnBall(x, y);
+            // 手指经过小球时
+            that.touchOnBall(x, y);
 
             // 移动画线事件
             that.refresh();
@@ -354,6 +426,7 @@ var Ball = function (ctx, x, y, radius, code) {
         ctx.strokeStyle = borderColor;
         ctx.stroke();
         ctx.fill();
+
         ctx.beginPath();
 
     };
