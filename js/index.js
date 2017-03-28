@@ -195,6 +195,8 @@ var GesturePassword = function () {
 
         $canvas.on('touchstart', function (e) {
 
+            e.preventDefault(); // 防止浏览器默认事件
+
             var x = e.pageX || e.originalEvent.targetTouches[0].pageX,
                 y = e.pageY || e.originalEvent.targetTouches[0].pageY
             ;
@@ -204,6 +206,8 @@ var GesturePassword = function () {
         });
 
         $canvas.on('touchmove', function (e) {
+
+            e.preventDefault(); // 防止浏览器默认事件
 
             var x = e.originalEvent.targetTouches[0].pageX,
                 y = e.originalEvent.targetTouches[0].pageY
