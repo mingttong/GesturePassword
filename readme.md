@@ -1,6 +1,6 @@
 ## 360H5
 
-**demo地址：[http://fuch.cn/GesturePassword/](http://fuch.cn/GesturePassword/)**
+**demo地址：[https://mingttong.github.io/GesturePassword/](https://mingttong.github.io/GesturePassword/)**
 
 ### 飞跃太空山问题
 
